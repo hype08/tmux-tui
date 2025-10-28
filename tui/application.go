@@ -40,6 +40,14 @@ const (
 	Help
 )
 
+type ScreenMode int
+
+const (
+	ScreenNormal ScreenMode = iota
+	ScreenHalf
+	ScreenFull
+)
+
 type (
 	terminal struct {
 		width  int
@@ -71,6 +79,8 @@ type (
 		showHelp        bool
 		maximizePreview bool
 		swapSrc         int
+		screenMode      ScreenMode
+		scrollHeight    int
 
 		textInput   textinput.Model
 		inputAction InputAction
@@ -83,7 +93,7 @@ func NewApplication(theme Theme) *tea.Program {
 		Error:        "",
 		terminal:     terminal{80, 80},
 		theme:        theme,
-		preview:      Frame{title: "Preview"},
+		preview:      Frame{title: "Preview", scrollable: true},
 		sessions:     ListFrame{frame: Frame{title: "[1] Sessions", focused: true}, parentId: -1},
 		windows:      ListFrame{frame: Frame{title: "[2] Windows"}, parentId: -1},
 		panes:        ListFrame{frame: Frame{title: "[3] Panes"}, parentId: -1},
@@ -91,6 +101,8 @@ func NewApplication(theme Theme) *tea.Program {
 		showAll:      false,
 		swapSrc:      -1,
 		inputAction:  None,
+		screenMode:   ScreenNormal,
+		scrollHeight: 5,
 	}
 
 	model.textInput = textinput.New()
@@ -315,6 +327,18 @@ common_bindings:
 				m.panes.SelectNext()
 			}
 			cmd = listEntitiesCmd
+		case "ctrl+u", "K":
+			// Scroll preview up
+			m.preview.ScrollUp(m.scrollHeight)
+		case "ctrl+d", "J":
+			// Scroll preview down
+			m.preview.ScrollDown(m.scrollHeight)
+		case "+", "=":
+			// Next screen mode (normal -> half -> full)
+			m.nextScreenMode()
+		case "_", "-":
+			// Previous screen mode (full -> half -> normal)
+			m.prevScreenMode()
 		case "a":
 			m.showAll = !m.showAll
 			cmd = listEntitiesCmd
@@ -459,6 +483,38 @@ func (m AppModel) StatusBar() Frame {
 	return frame
 }
 
+// nextScreenMode cycles to the next screen mode: Normal -> Half -> Full -> Normal
+func (m *AppModel) nextScreenMode() {
+	modes := []ScreenMode{ScreenNormal, ScreenHalf, ScreenFull}
+	for i, mode := range modes {
+		if mode == m.screenMode {
+			if i == len(modes)-1 {
+				m.screenMode = modes[0]
+			} else {
+				m.screenMode = modes[i+1]
+			}
+			return
+		}
+	}
+	m.screenMode = ScreenNormal
+}
+
+// prevScreenMode cycles to the previous screen mode: Full -> Half -> Normal -> Full
+func (m *AppModel) prevScreenMode() {
+	modes := []ScreenMode{ScreenNormal, ScreenHalf, ScreenFull}
+	for i, mode := range modes {
+		if mode == m.screenMode {
+			if i == 0 {
+				m.screenMode = modes[len(modes)-1]
+			} else {
+				m.screenMode = modes[i-1]
+			}
+			return
+		}
+	}
+	m.screenMode = ScreenFull
+}
+
 func tickCmd() tea.Cmd {
 	return tea.Tick(time.Second*1, func(t time.Time) tea.Msg {
 		return tickMsg(t)
@@ -545,28 +601,51 @@ func listEntitiesCmd() tea.Msg {
 
 func previewCmd(m AppModel) tea.Cmd {
 	return func() tea.Msg {
+		// Get our own pane/window/session IDs to detect self-preview
+		selfInfoCmd := exec.Command("tmux", "display-message", "-p", "#{session_id}\t#{window_id}\t#{pane_id}")
+		selfInfoBytes, err := selfInfoCmd.Output()
+		if err != nil {
+			// If we can't get our own info, proceed normally
+			selfInfoBytes = []byte("")
+		}
+		selfInfo := strings.TrimSpace(string(selfInfoBytes))
+		parts := strings.Split(selfInfo, "\t")
+
+		var selfSessionId, selfWindowId, selfPaneId string
+		if len(parts) == 3 {
+			selfSessionId = parts[0]
+			selfWindowId = parts[1]
+			selfPaneId = parts[2]
+		}
+
 		id := ""
 		switch m.focusedFrame {
 		case 1:
 			id = fmt.Sprintf("$%d", m.sessions.currentId)
+			// Check if previewing our own session
+			if selfSessionId != "" && id == selfSessionId {
+				return previewMsg("")
+			}
 		case 2:
 			id = fmt.Sprintf("@%d", m.windows.currentId)
+			// Check if previewing our own window
+			if selfWindowId != "" && id == selfWindowId {
+				return previewMsg("")
+			}
 		case 3:
 			id = fmt.Sprintf("%%%d", m.panes.currentId)
+			// Check if previewing our own pane
+			if selfPaneId != "" && id == selfPaneId {
+				return previewMsg("")
+			}
 		}
+
 		c := exec.Command("tmux", "capture-pane", "-ep", "-t", id)
 		bytes, err := c.Output()
 		if err != nil {
 			return nil
 		}
 		preview := string(bytes[:])
-
-		// Detect recursive preview (when previewing tmux-tui itself)
-		if strings.Contains(preview, "[1] Sessions") &&
-		   strings.Contains(preview, "[2] Windows") &&
-		   strings.Contains(preview, "[3] Panes") {
-			preview = "\n\n  Cannot preview tmux-tui itself.\n\n  (This would create a recursive preview loop)\n"
-		}
 
 		return previewMsg(preview)
 	}
@@ -621,10 +700,17 @@ func (m AppModel) HelpView() string {
 	helpContent += keyStyle.Render("  /") + descStyle.Render("Enter filter mode") + "\n"
 	helpContent += keyStyle.Render("  a") + descStyle.Render("Toggle show all items") + "\n\n"
 
+	// Preview control section
+	helpContent += sectionStyle.Render("Preview Control") + "\n"
+	helpContent += keyStyle.Render("  ctrl+u, K") + descStyle.Render("Scroll preview up") + "\n"
+	helpContent += keyStyle.Render("  ctrl+d, J") + descStyle.Render("Scroll preview down") + "\n"
+	helpContent += keyStyle.Render("  +/=") + descStyle.Render("Next screen mode (normal→half→full)") + "\n"
+	helpContent += keyStyle.Render("  _/-") + descStyle.Render("Previous screen mode (full→half→normal)") + "\n"
+	helpContent += keyStyle.Render("  m") + descStyle.Render("Toggle maximize preview window") + "\n\n"
+
 	// General section
 	helpContent += sectionStyle.Render("General") + "\n"
 	helpContent += keyStyle.Render("  ?") + descStyle.Render("Toggle this help menu") + "\n"
-	helpContent += keyStyle.Render("  m") + descStyle.Render("Toggle maximize preview window") + "\n"
 	helpContent += keyStyle.Render("  q, ctrl+c") + descStyle.Render("Quit application") + "\n"
 	helpContent += keyStyle.Render("  esc") + descStyle.Render("Cancel current operation") + "\n\n"
 

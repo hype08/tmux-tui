@@ -37,10 +37,6 @@ Terminal User Interface for managing tmux sessions, windows, and panes. Inspired
 
 4. Move the binary to a location in your PATH:
    ```bash
-   # macOS/Linux
-   sudo mv tmux-tui /usr/local/bin/
-
-   # Or to your home directory (no sudo required)
    mkdir -p ~/.local/bin
    mv tmux-tui ~/.local/bin/
    # Add ~/.local/bin to your PATH if not already there
@@ -65,8 +61,6 @@ The binary will be at `build/tmux-tui`.
 
 ## Quick Start Tutorial
 
-This tutorial will help you get started with tmux-tui in 5 minutes.
-
 ### Step 1: Run tmux-tui
 
 First, make sure you're inside a tmux session:
@@ -78,8 +72,6 @@ tmux new -s demo
 # Run tmux-tui
 tmux-tui
 ```
-
-You should see a TUI with three columns: Sessions, Windows, and Panes.
 
 ### Step 2: Navigate the interface
 
@@ -107,15 +99,13 @@ Reload your tmux configuration:
 tmux source-file ~/.tmux.conf
 ```
 
-Now press `prefix w` (usually `Ctrl+b w`) to open tmux-tui in a popup window.
+Now press `prefix w` to open tmux-tui in a popup window.
 
 ### Step 5: Explore features
 
 - Press `m` to maximize the preview pane
 - Press `/` to filter items by name
 - Press `v` or `h` to split panes (when in Panes column)
-
-You're ready to use tmux-tui!
 
 ## Keybindings
 
@@ -152,30 +142,7 @@ Press `?` in the application to see all keybindings, or see below:
 - `q` or `ctrl+c` - Quit application
 - `esc` - Cancel current operation
 
-## How-To Guides
-
-### How to bind tmux-tui to a tmux key
-
-If you installed tmux-tui to a directory in your `$PATH` (like `/usr/local/bin`), you can use just the command name. Otherwise, use the full path.
-
-**Option 1: Popup window (recommended)**
-```tmux
-# If tmux-tui is in $PATH
-bind-key w display-popup -E -w 80% -h 80% "tmux-tui"
-
-# Or with full path
-bind-key w display-popup -E -w 80% -h 80% "$HOME/.local/bin/tmux-tui"
-```
-
-**Option 2: New window**
-```tmux
-bind-key W run-shell "tmux neww -n tmux-tui 'tmux-tui'"
-```
-
-**Option 3: Split pane**
-```tmux
-bind-key W split-window -h "tmux-tui"
-```
+## How-To
 
 ### How to maximize preview for detailed inspection
 
@@ -193,79 +160,6 @@ Press `m` again to return to split view.
 3. Press `enter` to apply filter
 4. Press `a` to toggle showing all items vs filtered items
 5. Press `/` and clear the text, then `enter` to remove filter
-
-## Troubleshooting
-
-### macOS says the binary is malicious or can't be opened
-
-This happens because the binary isn't code-signed. macOS Gatekeeper blocks unsigned binaries by default.
-
-**Solution 1: Remove the quarantine attribute (recommended)**
-```bash
-xattr -d com.apple.quarantine tmux-tui
-```
-
-Then try running it again.
-
-**Solution 2: Use System Settings**
-1. Try to run `tmux-tui`
-2. macOS will show a security warning
-3. Open System Settings > Privacy & Security
-4. Scroll down to the Security section
-5. Click "Open Anyway" next to the tmux-tui message
-6. Confirm by clicking "Open"
-
-**Solution 3: Build from source**
-If you prefer to avoid these security warnings entirely, build from source:
-```bash
-git clone https://github.com/hype08/tmux-tui.git
-cd tmux-tui
-make
-```
-
-Binaries you build yourself won't trigger Gatekeeper warnings.
-
-### Preview shows "Cannot preview tmux-tui itself"
-
-This is expected behavior. When you select a window or pane that's running tmux-tui, the preview is disabled to prevent recursive display (which would create an infinite cascade).
-
-**Solution**: This is intentional. Preview will work normally for all other panes.
-
-### Keybinding doesn't work after adding to .tmux.conf
-
-Make sure to reload your tmux configuration:
-
-```bash
-tmux source-file ~/.tmux.conf
-```
-
-Or press your prefix key followed by `r` if you have the reload binding configured.
-
-### Colors don't match my terminal
-
-tmux-tui inherits your terminal's default colors. Make sure:
-1. Your terminal (Ghostty) theme is configured correctly
-2. tmux is configured to pass through colors:
-   ```tmux
-   set -g default-terminal "tmux-256color"
-   set-option -sa terminal-features ",xterm-ghostty:RGB"
-   ```
-
-## Architecture
-
-### Layout
-
-tmux-tui uses a vertical sidebar layout:
-- **Left sidebar (40% width)**: Sessions, windows, and panes stacked vertically
-- **Right preview (60% width)**: Real-time preview of selected pane content
-- **Bottom status bar**: Keybinding hints and status information
-
-### Theme System
-
-Unlike tmux-tui (which had 22 built-in themes), tmux-tui uses a minimal theme that inherits from your terminal:
-- Background/Foreground: Terminal defaults
-- Accent: Cyan (color 6)
-- Secondary: Gray (color 8)
 
 ## Development
 

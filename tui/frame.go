@@ -11,20 +11,46 @@ import (
 )
 
 type Frame struct {
-	title    string
-	contents string
-	width    int
-	height   int
-	focused  bool
+	title      string
+	contents   string
+	width      int
+	height     int
+	focused    bool
+	scrollY    int
+	scrollable bool
 }
 
 func NewFrame(m AppModel) Frame {
 	return Frame{
-		title:    "",
-		contents: "",
-		width:    m.terminal.width,
-		height:   m.terminal.height,
-		focused:  true,
+		title:      "",
+		contents:   "",
+		width:      m.terminal.width,
+		height:     m.terminal.height,
+		focused:    true,
+		scrollY:    0,
+		scrollable: false,
+	}
+}
+
+// ScrollUp scrolls the frame content up by the given number of lines
+func (f *Frame) ScrollUp(lines int) {
+	f.scrollY -= lines
+	if f.scrollY < 0 {
+		f.scrollY = 0
+	}
+}
+
+// ScrollDown scrolls the frame content down by the given number of lines
+func (f *Frame) ScrollDown(lines int) {
+	contentLines := strings.Count(f.contents, "\n") + 1
+	maxScroll := contentLines - f.height + 3 // Account for borders and padding
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+
+	f.scrollY += lines
+	if f.scrollY > maxScroll {
+		f.scrollY = maxScroll
 	}
 }
 
@@ -62,7 +88,18 @@ func (frame Frame) View(theme Theme) string {
 		contentStyle = contentStyle.MaxHeight(contentMaxHeight).MarginBottom(1)
 	}
 
-	contents := contentStyle.Render(frame.contents)
+	// Apply scrolling if enabled
+	displayContents := frame.contents
+	if frame.scrollable && frame.scrollY > 0 {
+		lines := strings.Split(frame.contents, "\n")
+		if frame.scrollY < len(lines) {
+			displayContents = strings.Join(lines[frame.scrollY:], "\n")
+		} else {
+			displayContents = ""
+		}
+	}
+
+	contents := contentStyle.Render(displayContents)
 
 	header := style.SetString(borderTop)
 	// Set Height to account for borders being OUTSIDE the height value
@@ -113,9 +150,27 @@ func (m AppModel) DrawGrid(preview, sessions, windows, frames, status Frame) str
 		return lipgloss.JoinVertical(lipgloss.Top, previewRendered, statusRendered)
 	}
 
-	// Normal layout: Left sidebar: 40% width, right preview: 60% width
-	leftWidth := w * 4 / 10
-	rightWidth := w - leftWidth
+	// Calculate layout based on screen mode
+	var leftWidth, rightWidth int
+	switch m.screenMode {
+	case ScreenNormal:
+		// Normal layout: Left sidebar: 40% width, right preview: 60% width
+		leftWidth = w * 4 / 10
+		rightWidth = w - leftWidth
+	case ScreenHalf:
+		// Half screen: Left sidebar: 30% width, right preview: 70% width
+		leftWidth = w * 3 / 10
+		rightWidth = w - leftWidth
+	case ScreenFull:
+		// Full screen: show only preview
+		preview.width = w
+		preview.height = contentHeight
+
+		previewRendered := preview.View(m.theme)
+		statusRendered := status.View(m.theme)
+
+		return lipgloss.JoinVertical(lipgloss.Top, previewRendered, statusRendered)
+	}
 
 	// Each frame in left sidebar gets 1/3 of height minus status bar
 	frameHeight := contentHeight / 3
