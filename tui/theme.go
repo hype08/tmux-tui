@@ -17,7 +17,7 @@ func DefaultTheme() Theme {
 	return Theme{
 		Background: lipgloss.Color(""),  // Use terminal default
 		Foreground: lipgloss.Color(""),  // Use terminal default
-		Accent:     lipgloss.Color("6"), // Cyan
+		Accent:     lipgloss.Color("2"), // Green
 		Secondary:  lipgloss.Color("8"), // Bright black/gray
 	}
 }

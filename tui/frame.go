@@ -113,7 +113,7 @@ func (frame Frame) View(theme Theme) string {
 		SetString(contents)
 
 	if frame.focused {
-		header = header.BorderForeground(theme.Accent)
+		header = header.Foreground(theme.Accent)
 		pane = pane.BorderForeground(theme.Accent)
 	}
 
@@ -236,9 +236,9 @@ func (listFrame *ListFrame) RenderContents(theme Theme) Frame {
 	l := list.New().EnumeratorStyle(enumeratorStyle).ItemStyle(itemStyle)
 	for i, item := range listFrame.visibleItems() {
 		if slices.Contains(listFrame.markedIds, item.id) {
-			l.Item(itemStyle.Foreground(theme.Secondary).Render(fmt.Sprintf("[%d]: %s", item.id, item.name)))
+			l.Item(itemStyle.Foreground(theme.Secondary).Render(item.name))
 		} else {
-			l.Item(itemStyle.Render(fmt.Sprintf("[%d]: %s", item.id, item.name)))
+			l.Item(itemStyle.Render(item.name))
 		}
 		if item.id == listFrame.currentId {
 			currentIndex = i
@@ -248,9 +248,9 @@ func (listFrame *ListFrame) RenderContents(theme Theme) Frame {
 	if currentIndex > -1 {
 		enumerator := func(l list.Items, i int) string {
 			if i == currentIndex {
-				return "→ "
+				return "● "
 			}
-			return ""
+			return "  "
 		}
 		l = l.Enumerator(enumerator)
 	}

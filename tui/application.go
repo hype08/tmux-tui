@@ -94,9 +94,9 @@ func NewApplication(theme Theme) *tea.Program {
 		terminal:     terminal{80, 80},
 		theme:        theme,
 		preview:      Frame{title: "Preview", scrollable: true},
-		sessions:     ListFrame{frame: Frame{title: "[1] Sessions", focused: true}, parentId: -1},
-		windows:      ListFrame{frame: Frame{title: "[2] Windows"}, parentId: -1},
-		panes:        ListFrame{frame: Frame{title: "[3] Panes"}, parentId: -1},
+		sessions:     ListFrame{frame: Frame{title: "Sessions", focused: true}, parentId: -1},
+		windows:      ListFrame{frame: Frame{title: "Windows"}, parentId: -1},
+		panes:        ListFrame{frame: Frame{title: "Panes"}, parentId: -1},
 		focusedFrame: 1,
 		showAll:      false,
 		swapSrc:      -1,
@@ -397,15 +397,9 @@ func (m AppModel) View() string {
 	windows := m.windows.RenderContents(m.theme)
 	panes := m.panes.RenderContents(m.theme)
 
-	if m.swapSrc == -1 {
-		sessions.title = "[1] Sessions"
-		windows.title = "[2] Windows"
-		panes.title = "[3] Panes"
-	} else {
-		sessions.title = "Sessions"
-		windows.title = "Windows"
-		panes.title = "Panes"
-	}
+	sessions.title = "Sessions"
+	windows.title = "Windows"
+	panes.title = "Panes"
 
 	m.textInput.Width = m.terminal.width - 4
 	var status = Frame{
@@ -430,7 +424,7 @@ func (m AppModel) StatusBar() Frame {
 	frame := Frame{title: "Status"}
 	normalStyle := m.theme.NewStyle()
 	accentStyle := normalStyle.Copy().Foreground(m.theme.Accent)
-	left := []string{normalStyle.Render("Quit: q")}
+	left := []string{normalStyle.Render("Help: ?"), normalStyle.Render("Quit: q")}
 
 	if m.swapSrc == -1 {
 		left = append(left, normalStyle.Render("Go to: <enter>"))
@@ -716,17 +710,25 @@ func (m AppModel) HelpView() string {
 
 	helpContent += descStyle.Foreground(m.theme.Secondary).Render("Press ? to close this help menu")
 
-	// Center the help content
+	// Calculate content height and ensure it fits within the terminal
+	contentLines := strings.Count(helpContent, "\n")
+	maxHeight := m.terminal.height - 6
+	boxWidth := m.terminal.width*8/10 - 4
+
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(m.theme.Accent).
 		Padding(1, 2).
-		Width(m.terminal.width * 8 / 10).
-		Height(m.terminal.height - 4)
+		Width(boxWidth)
+
+	if contentLines < maxHeight {
+		boxStyle = boxStyle.Height(contentLines + 2)
+	} else {
+		boxStyle = boxStyle.Height(maxHeight)
+	}
 
 	helpBox := boxStyle.Render(helpContent)
 
-	// Center the box on the screen
 	return lipgloss.Place(
 		m.terminal.width,
 		m.terminal.height,
