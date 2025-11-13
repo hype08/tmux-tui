@@ -346,6 +346,8 @@ common_bindings:
 			m.showHelp = !m.showHelp
 		case "m":
 			m.maximizePreview = !m.maximizePreview
+		case "t":
+			m.toggleTransparent()
 		}
 	}
 
@@ -457,6 +459,12 @@ func (m AppModel) StatusBar() Frame {
 		}
 	}
 
+	if m.theme.Transparent {
+		left = append(left, accentStyle.Render("Transparent: t"))
+	} else {
+		left = append(left, normalStyle.Render("Transparent: t"))
+	}
+
 	rightString := normalStyle.Foreground(m.theme.Secondary).Render(strings.TrimSpace(Version))
 
 	separator := normalStyle.Render(" | ")
@@ -507,6 +515,13 @@ func (m *AppModel) prevScreenMode() {
 		}
 	}
 	m.screenMode = ScreenFull
+}
+
+func (m *AppModel) toggleTransparent() {
+	m.theme.Transparent = !m.theme.Transparent
+	if !m.theme.Transparent && m.theme.Background == "" {
+		m.theme.Background = lipgloss.Color("0")
+	}
 }
 
 func tickCmd() tea.Cmd {
@@ -700,7 +715,8 @@ func (m AppModel) HelpView() string {
 	helpContent += keyStyle.Render("  ctrl+d, J") + descStyle.Render("Scroll preview down") + "\n"
 	helpContent += keyStyle.Render("  +/=") + descStyle.Render("Next screen mode (normal→half→full)") + "\n"
 	helpContent += keyStyle.Render("  _/-") + descStyle.Render("Previous screen mode (full→half→normal)") + "\n"
-	helpContent += keyStyle.Render("  m") + descStyle.Render("Toggle maximize preview window") + "\n\n"
+	helpContent += keyStyle.Render("  m") + descStyle.Render("Toggle maximize preview window") + "\n"
+	helpContent += keyStyle.Render("  t") + descStyle.Render("Toggle transparent background") + "\n\n"
 
 	// General section
 	helpContent += sectionStyle.Render("General") + "\n"

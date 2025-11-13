@@ -60,8 +60,8 @@ func (frame Frame) View(theme Theme) string {
 	// Width accounts for left and right borders
 	width := frame.width - 2
 
-	// Use base style without explicit colors to inherit terminal theme
-	style := lipgloss.NewStyle()
+	// Use base style, apply background if not transparent
+	style := theme.NewStyle()
 
 	// Labeled top border (custom header line)
 	truncated := truncate.String(fmt.Sprintf(" %s ", frame.title), uint(width-2))
