@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -53,6 +54,25 @@ func splitPane(m AppModel, horizontal bool) tea.Cmd {
 func sendKeyToPaneCmd(m AppModel, key tea.KeyMsg) tea.Cmd {
 	return func() tea.Msg {
 		target := fmt.Sprintf("%%%d", m.liveInputTarget)
+
+		checkCmd := exec.Command("tmux", "list-panes", "-a", "-F", "#{pane_id}")
+		output, err := checkCmd.Output()
+		if err != nil {
+			return paneClosedMsg{}
+		}
+
+		paneExists := false
+		for _, line := range strings.Split(string(output), "\n") {
+			if strings.TrimSpace(line) == target {
+				paneExists = true
+				break
+			}
+		}
+
+		if !paneExists {
+			return paneClosedMsg{}
+		}
+
 		keyString := mapKeyToTmuxSendKeys(key)
 		c := exec.Command("tmux", "send-keys", "-t", target, keyString)
 		c.Run()

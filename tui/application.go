@@ -19,6 +19,7 @@ type (
 	previewMsg        string
 	tickMsg           time.Time
 	clearInputTextMsg struct{}
+	paneClosedMsg     struct{}
 
 	listEntitiesMsg struct {
 		sessions       []TmuxEntity
@@ -197,8 +198,15 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 	case "i":
 		if m.focusedFrame == 3 {
-			m.inputAction = LiveInput
-			m.liveInputTarget = m.panes.currentId
+			selfInfoCmd := exec.Command("tmux", "display-message", "-p", "#{pane_id}")
+			selfInfoBytes, _ := selfInfoCmd.Output()
+			selfPaneId := strings.TrimSpace(string(selfInfoBytes))
+			targetPaneId := fmt.Sprintf("%%%d", m.panes.currentId)
+
+			if selfPaneId != targetPaneId {
+				m.inputAction = LiveInput
+				m.liveInputTarget = m.panes.currentId
+			}
 		}
 		case "r":
 			switch m.focusedFrame {
@@ -390,6 +398,12 @@ basic_handlers:
 		cmd = previewCmd(m)
 	case previewMsg:
 		m.preview.contents = string(msg)
+	case paneClosedMsg:
+		if m.inputAction == LiveInput {
+			m.inputAction = None
+			m.liveInputTarget = -1
+			m.Error = "Target pane was closed"
+		}
 	}
 
 	if m.showAll {
