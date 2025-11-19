@@ -50,3 +50,12 @@ func splitPane(m AppModel, horizontal bool) tea.Cmd {
 		return tickMsg{}
 	}
 }
+func sendKeyToPaneCmd(m AppModel, key tea.KeyMsg) tea.Cmd {
+	return func() tea.Msg {
+		target := fmt.Sprintf("%%%d", m.liveInputTarget)
+		keyString := mapKeyToTmuxSendKeys(key)
+		c := exec.Command("tmux", "send-keys", "-t", target, keyString)
+		c.Run()
+		return nil
+	}
+}

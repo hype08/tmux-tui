@@ -37,6 +37,7 @@ const (
 	NewWindow
 	RenameSession
 	RenameWindow
+	LiveInput
 	Help
 )
 
@@ -84,7 +85,8 @@ type (
 
 		textInput   textinput.Model
 		inputAction InputAction
-		filter      string
+		filter          string
+	liveInputTarget int
 	}
 )
 
@@ -193,6 +195,11 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.focusedFrame == 3 {
 				cmd = splitPane(m, false)
 			}
+	case "i":
+		if m.focusedFrame == 3 {
+			m.inputAction = LiveInput
+			m.liveInputTarget = m.panes.currentId
+		}
 		case "r":
 			switch m.focusedFrame {
 			case 1:
@@ -262,6 +269,19 @@ swap_mode:
 	goto common_bindings
 
 input_mode:
+	if m.inputAction == LiveInput {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			if msg.String() == "ctrl+q" {
+				m.inputAction = None
+				m.liveInputTarget = -1
+			} else {
+				cmd = sendKeyToPaneCmd(m, msg)
+			}
+		}
+		goto basic_handlers
+	}
+
 	m.textInput, cmd = m.textInput.Update(msg)
 
 	switch msg := msg.(type) {
@@ -417,6 +437,9 @@ func (m AppModel) View() string {
 		status = m.StatusBar()
 	case Filter:
 		status.title = "Filter"
+	case LiveInput:
+		status.title = "LIVE INPUT MODE - Ctrl+Q to exit"
+		status.contents = ""
 	}
 
 	return m.DrawGrid(preview, sessions, windows, panes, status)
@@ -439,6 +462,7 @@ func (m AppModel) StatusBar() Frame {
 		} else {
 			left = append(left, normalStyle.Render("Vertical split: v"))
 			left = append(left, normalStyle.Render("Horizontal split: h"))
+			left = append(left, normalStyle.Render("Live input: i"))
 		}
 	} else {
 		left = append(left, accentStyle.Render("Swap: s/<space>/<enter>"))
@@ -660,6 +684,79 @@ func previewCmd(m AppModel) tea.Cmd {
 	}
 }
 
+func mapKeyToTmuxSendKeys(msg tea.KeyMsg) string {
+	switch msg.Type {
+	case tea.KeyEnter:
+		return "Enter"
+	case tea.KeyTab:
+		return "Tab"
+	case tea.KeyBackspace:
+		return "BSpace"
+	case tea.KeyUp:
+		return "Up"
+	case tea.KeyDown:
+		return "Down"
+	case tea.KeyLeft:
+		return "Left"
+	case tea.KeyRight:
+		return "Right"
+	case tea.KeySpace:
+		return "Space"
+	case tea.KeyEsc:
+		return "Escape"
+	case tea.KeyCtrlA:
+		return "C-a"
+	case tea.KeyCtrlB:
+		return "C-b"
+	case tea.KeyCtrlC:
+		return "C-c"
+	case tea.KeyCtrlD:
+		return "C-d"
+	case tea.KeyCtrlE:
+		return "C-e"
+	case tea.KeyCtrlF:
+		return "C-f"
+	case tea.KeyCtrlG:
+		return "C-g"
+	case tea.KeyCtrlH:
+		return "C-h"
+	case tea.KeyCtrlJ:
+		return "C-j"
+	case tea.KeyCtrlK:
+		return "C-k"
+	case tea.KeyCtrlL:
+		return "C-l"
+	case tea.KeyCtrlN:
+		return "C-n"
+	case tea.KeyCtrlO:
+		return "C-o"
+	case tea.KeyCtrlP:
+		return "C-p"
+	case tea.KeyCtrlR:
+		return "C-r"
+	case tea.KeyCtrlS:
+		return "C-s"
+	case tea.KeyCtrlT:
+		return "C-t"
+	case tea.KeyCtrlU:
+		return "C-u"
+	case tea.KeyCtrlV:
+		return "C-v"
+	case tea.KeyCtrlW:
+		return "C-w"
+	case tea.KeyCtrlX:
+		return "C-x"
+	case tea.KeyCtrlY:
+		return "C-y"
+	case tea.KeyCtrlZ:
+		return "C-z"
+	case tea.KeyRunes:
+		return msg.String()
+	default:
+		return msg.String()
+	}
+}
+
 func (m AppModel) HelpView() string {
 	titleStyle := lipgloss.NewStyle().
 		Foreground(m.theme.Accent).
@@ -702,7 +799,8 @@ func (m AppModel) HelpView() string {
 	// Pane operations section
 	helpContent += sectionStyle.Render("Pane Operations (when pane focused)") + "\n"
 	helpContent += keyStyle.Render("  v") + descStyle.Render("Split pane vertically") + "\n"
-	helpContent += keyStyle.Render("  h") + descStyle.Render("Split pane horizontally") + "\n\n"
+	helpContent += keyStyle.Render("  h") + descStyle.Render("Split pane horizontally") + "\n"
+	helpContent += keyStyle.Render("  i") + descStyle.Render("Enter live input mode (Ctrl+Q to exit)") + "\n\n"
 
 	// Filtering section
 	helpContent += sectionStyle.Render("Filtering & Display") + "\n"
