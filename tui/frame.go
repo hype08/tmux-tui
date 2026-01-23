@@ -79,7 +79,7 @@ func (frame Frame) View(theme Theme) string {
 	// Only add bottom margin if there's room (height > 5)
 	contentMaxHeight := paneHeight - 1
 	contentStyle := style.Align(lipgloss.Left, lipgloss.Top).
-		MaxWidth(width - 4).
+		MaxWidth(width - 2).
 		MaxHeight(contentMaxHeight)
 
 	// Add bottom margin only for taller frames to provide visual spacing

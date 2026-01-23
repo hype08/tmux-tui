@@ -194,18 +194,18 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.focusedFrame == 3 {
 				cmd = splitPane(m, false)
 			}
-	case "i":
-		if m.focusedFrame == 3 {
-			selfInfoCmd := exec.Command("tmux", "display-message", "-p", "#{pane_id}")
-			selfInfoBytes, _ := selfInfoCmd.Output()
-			selfPaneId := strings.TrimSpace(string(selfInfoBytes))
-			targetPaneId := fmt.Sprintf("%%%d", m.panes.currentId)
+		case "i":
+			if m.focusedFrame >= 2 && m.panes.currentId != -1 {
+				selfInfoCmd := exec.Command("tmux", "display-message", "-p", "#{pane_id}")
+				selfInfoBytes, _ := selfInfoCmd.Output()
+				selfPaneId := strings.TrimSpace(string(selfInfoBytes))
+				targetPaneId := fmt.Sprintf("%%%d", m.panes.currentId)
 
-			if selfPaneId != targetPaneId {
-				m.inputAction = LiveInput
-				m.liveInputTarget = m.panes.currentId
+				if selfPaneId != targetPaneId {
+					m.inputAction = LiveInput
+					m.liveInputTarget = m.panes.currentId
+				}
 			}
-		}
 		case "r":
 			switch m.focusedFrame {
 			case 1:
@@ -467,10 +467,15 @@ func (m AppModel) StatusBar() Frame {
 		left = append(left, normalStyle.Render("Go to: <enter>"))
 		left = append(left, normalStyle.Render("Delete: d"))
 		left = append(left, normalStyle.Render("Swap: s"))
-		if m.focusedFrame != 3 {
+		if m.focusedFrame == 1 {
 			left = append(left, normalStyle.Render("New: n"))
 			left = append(left, normalStyle.Render("New (nameless): N"))
 			left = append(left, normalStyle.Render("Rename: r"))
+		} else if m.focusedFrame == 2 {
+			left = append(left, normalStyle.Render("New: n"))
+			left = append(left, normalStyle.Render("New (nameless): N"))
+			left = append(left, normalStyle.Render("Rename: r"))
+			left = append(left, normalStyle.Render("Live input: i"))
 		} else {
 			left = append(left, normalStyle.Render("Vertical split: v"))
 			left = append(left, normalStyle.Render("Horizontal split: h"))
@@ -809,8 +814,12 @@ func (m AppModel) HelpView() string {
 	// Pane operations section
 	helpContent += sectionStyle.Render("Pane Operations (when pane focused)") + "\n"
 	helpContent += keyStyle.Render("  v") + descStyle.Render("Split pane vertically") + "\n"
-	helpContent += keyStyle.Render("  h") + descStyle.Render("Split pane horizontally") + "\n"
-	helpContent += keyStyle.Render("  i") + descStyle.Render("Enter live input mode (Ctrl+Q to exit)") + "\n\n"
+	helpContent += keyStyle.Render("  h") + descStyle.Render("Split pane horizontally") + "\n\n"
+
+	// Live input section
+	helpContent += sectionStyle.Render("Live Input (windows/panes)") + "\n"
+	helpContent += keyStyle.Render("  i") + descStyle.Render("Enter live input mode (send keys to selected pane)") + "\n"
+	helpContent += keyStyle.Render("  ctrl+q") + descStyle.Render("Exit live input mode") + "\n\n"
 
 	// Filtering section
 	helpContent += sectionStyle.Render("Filtering & Display") + "\n"
