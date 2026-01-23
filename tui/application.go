@@ -97,14 +97,14 @@ func NewApplication(theme Theme) *tea.Program {
 		terminal:     terminal{80, 80},
 		theme:        theme,
 		preview:      Frame{title: "Preview", scrollable: true},
-		sessions:     ListFrame{frame: Frame{title: "Sessions", focused: true}, parentId: -1},
-		windows:      ListFrame{frame: Frame{title: "Windows"}, parentId: -1},
-		panes:        ListFrame{frame: Frame{title: "Panes"}, parentId: -1},
+		sessions:     ListFrame{frame: Frame{title: "Sessions", focused: true}, parentId: -1, showNumbers: true},
+		windows:      ListFrame{frame: Frame{title: "Windows"}, parentId: -1, showNumbers: true},
+		panes:        ListFrame{frame: Frame{title: "Panes"}, parentId: -1, showNumbers: true},
 		focusedFrame: 1,
 		showAll:      false,
 		swapSrc:      -1,
 		inputAction:  None,
-		screenMode:   ScreenNormal,
+		screenMode:   ScreenHalf,
 		scrollHeight: 5,
 	}
 
@@ -135,24 +135,22 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case tea.KeyEsc.String():
 			cmd = tea.Quit
-		case "1":
-			m.focusedFrame = 1
-			m.sessions.frame.focused = true
-			m.windows.frame.focused = false
-			m.panes.frame.focused = false
-			cmd = previewCmd(m)
-		case "2":
-			m.focusedFrame = 2
-			m.sessions.frame.focused = false
-			m.windows.frame.focused = true
-			m.panes.frame.focused = false
-			cmd = previewCmd(m)
-		case "3":
-			m.focusedFrame = 3
-			m.sessions.frame.focused = false
-			m.windows.frame.focused = false
-			m.panes.frame.focused = true
-			cmd = previewCmd(m)
+		case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
+			idx := int(msg.String()[0] - '0')
+			var listFrame *ListFrame
+			switch m.focusedFrame {
+			case 1:
+				listFrame = &m.sessions
+			case 2:
+				listFrame = &m.windows
+			case 3:
+				listFrame = &m.panes
+			}
+			visibleItems := listFrame.VisibleItems()
+			if idx > 0 && idx <= len(visibleItems) {
+				listFrame.currentId = visibleItems[idx-1].id
+				cmd = previewCmd(m)
+			}
 		case tea.KeyTab.String():
 			// Cycle forward: 1->2->3->1
 			m.focusedFrame = m.focusedFrame%3 + 1
@@ -795,11 +793,9 @@ func (m AppModel) HelpView() string {
 	helpContent += sectionStyle.Render("Navigation") + "\n"
 	helpContent += keyStyle.Render("  j/k, ↓/↑") + descStyle.Render("Navigate down/up in current list") + "\n"
 	helpContent += keyStyle.Render("  ctrl+n/ctrl+p") + descStyle.Render("Navigate down/up (alternative)") + "\n"
-	helpContent += keyStyle.Render("  1") + descStyle.Render("Focus sessions column") + "\n"
-	helpContent += keyStyle.Render("  2") + descStyle.Render("Focus windows column") + "\n"
-	helpContent += keyStyle.Render("  3") + descStyle.Render("Focus panes column") + "\n"
-	helpContent += keyStyle.Render("  tab") + descStyle.Render("Cycle focus forward (1→2→3→1)") + "\n"
-	helpContent += keyStyle.Render("  shift+tab") + descStyle.Render("Cycle focus backward (3→2→1→3)") + "\n"
+	helpContent += keyStyle.Render("  1-9") + descStyle.Render("Jump to item by number in current list") + "\n"
+	helpContent += keyStyle.Render("  tab") + descStyle.Render("Cycle focus forward (sessions→windows→panes)") + "\n"
+	helpContent += keyStyle.Render("  shift+tab") + descStyle.Render("Cycle focus backward") + "\n"
 	helpContent += keyStyle.Render("  enter") + descStyle.Render("Switch to selected session/window/pane") + "\n\n"
 
 	// Entity management section

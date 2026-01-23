@@ -205,16 +205,17 @@ func (m AppModel) DrawGrid(preview, sessions, windows, frames, status Frame) str
 }
 
 type ListFrame struct {
-	frame      Frame
-	items      []TmuxEntity
-	currentId  int
-	markedIds  []int
-	parentId   int
-	filterText string
+	frame       Frame
+	items       []TmuxEntity
+	currentId   int
+	markedIds   []int
+	parentId    int
+	filterText  string
+	showNumbers bool
 }
 
 func (listFrame *ListFrame) Update() {
-	visibleItems := listFrame.visibleItems()
+	visibleItems := listFrame.VisibleItems()
 	for _, item := range visibleItems {
 		if item.id == listFrame.currentId {
 			return
@@ -230,15 +231,20 @@ func (listFrame *ListFrame) Update() {
 func (listFrame *ListFrame) RenderContents(theme Theme) Frame {
 	enumeratorStyle := theme.NewStyle().Foreground(theme.Accent)
 	itemStyle := theme.NewStyle()
+	numberStyle := theme.NewStyle().Foreground(theme.Secondary)
 
 	currentIndex := -1
 
 	l := list.New().EnumeratorStyle(enumeratorStyle).ItemStyle(itemStyle)
-	for i, item := range listFrame.visibleItems() {
+	for i, item := range listFrame.VisibleItems() {
+		displayName := item.name
+		if listFrame.showNumbers && i < 9 {
+			displayName = fmt.Sprintf("%s %s", numberStyle.Render(fmt.Sprintf("%d", i+1)), item.name)
+		}
 		if slices.Contains(listFrame.markedIds, item.id) {
-			l.Item(itemStyle.Foreground(theme.Secondary).Render(item.name))
+			l.Item(itemStyle.Foreground(theme.Secondary).Render(displayName))
 		} else {
-			l.Item(itemStyle.Render(item.name))
+			l.Item(displayName)
 		}
 		if item.id == listFrame.currentId {
 			currentIndex = i
@@ -260,7 +266,7 @@ func (listFrame *ListFrame) RenderContents(theme Theme) Frame {
 }
 
 func (listFrame *ListFrame) SelectNext() {
-	items := listFrame.visibleItems()
+	items := listFrame.VisibleItems()
 	if listFrame.currentId == -1 && len(items) > 0 {
 		listFrame.currentId = 0
 		return
@@ -277,7 +283,7 @@ func (listFrame *ListFrame) SelectNext() {
 }
 
 func (listFrame *ListFrame) SelectPrevious() {
-	items := listFrame.visibleItems()
+	items := listFrame.VisibleItems()
 	if listFrame.currentId == -1 && len(items) > 0 {
 		listFrame.currentId = items[len(items)-1].id
 		return
@@ -321,7 +327,7 @@ func (listFrame ListFrame) ItemWithId(id int) *TmuxEntity {
 	return nil
 }
 
-func (listFrame *ListFrame) visibleItems() []TmuxEntity {
+func (listFrame *ListFrame) VisibleItems() []TmuxEntity {
 	var items []TmuxEntity
 	filter := strings.ToLower(listFrame.filterText)
 	for _, item := range listFrame.items {
