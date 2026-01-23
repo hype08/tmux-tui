@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-01-23
+
+### Added
+- Live input mode now available from windows frame (not just panes)
+
+### Fixed
+- Preview content no longer cropped by 2 characters
+
+## [0.5.0] - 2026-01-22
+
+### Added
+- Number-based navigation for quick item selection (press 1-9)
+
+## [0.4.0] - 2025-11-19
+
+### Added
+- Toggleable transparent background (press `t`)
+- Live input mode for typing directly into panes (press `i`, exit with `ctrl+q`)
+
+### Fixed
+- Prevent live input on self-pane
+- Handle pane closure during live input
+
 ## [0.3.0] - 2025-11-11
 
 ### Changed
