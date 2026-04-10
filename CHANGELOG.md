@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-04-10
+
+### Added
+- Refresh session keybinding (`R`) — kills and recreates a session in the same directory, triggering `after-new-session` hooks for a fresh start
+- Safe self-session deletion — when deleting your own active session, switches to the last-used session first instead of abruptly detaching
+
+### Changed
+- Delete session (`d`) now detects self-deletion and gracefully handles it
+
 ## [0.6.0] - 2026-01-23
 
 ### Added
