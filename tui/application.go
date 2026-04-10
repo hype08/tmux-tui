@@ -232,6 +232,10 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 2:
 				cmd = newWindowCmd(m)
 			}
+		case "R":
+			if m.focusedFrame == 1 {
+				cmd = refreshSessionCmd(m)
+			}
 		case "/":
 			m.inputAction = Filter
 			m.textInput.SetValue(m.filter)
@@ -471,6 +475,7 @@ func (m AppModel) StatusBar() Frame {
 			left = append(left, normalStyle.Render("New: n"))
 			left = append(left, normalStyle.Render("New (nameless): N"))
 			left = append(left, normalStyle.Render("Rename: r"))
+			left = append(left, normalStyle.Render("Refresh: R"))
 		} else if m.focusedFrame == 2 {
 			left = append(left, normalStyle.Render("New: n"))
 			left = append(left, normalStyle.Render("New (nameless): N"))
@@ -809,6 +814,7 @@ func (m AppModel) HelpView() string {
 	helpContent += keyStyle.Render("  N") + descStyle.Render("Create new (auto-generated name)") + "\n"
 	helpContent += keyStyle.Render("  r") + descStyle.Render("Rename selected item") + "\n"
 	helpContent += keyStyle.Render("  d") + descStyle.Render("Delete selected item") + "\n"
+	helpContent += keyStyle.Render("  R") + descStyle.Render("Refresh session (kill & recreate, triggers hooks)") + "\n"
 	helpContent += keyStyle.Render("  s") + descStyle.Render("Enter swap mode (then s/space/enter to confirm)") + "\n\n"
 
 	// Pane operations section
