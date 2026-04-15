@@ -182,6 +182,14 @@ func newSessionInDirCmd(path string, sessions []TmuxEntity) tea.Cmd {
 		}
 
 		exec.Command("tmux", "new-session", "-ds", name, "-c", path).Run()
+
+		panesBytes, _ := exec.Command("tmux", "list-panes", "-s", "-t", name, "-F", "#{pane_id}").Output()
+		for _, paneId := range strings.Split(strings.TrimSpace(string(panesBytes)), "\n") {
+			if paneId != "" {
+				exec.Command("tmux", "send-keys", "-t", paneId, fmt.Sprintf("cd %q && clear", path), "Enter").Run()
+			}
+		}
+
 		return clearInputTextMsg{}
 	}
 }
