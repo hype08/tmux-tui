@@ -40,6 +40,7 @@ const (
 	RenameWindow
 	LiveInput
 	Help
+	DirPicker
 )
 
 type ScreenMode int
@@ -88,6 +89,8 @@ type (
 		inputAction InputAction
 		filter          string
 	liveInputTarget int
+
+		dirPicker DirPickerModel
 	}
 )
 
@@ -218,11 +221,13 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textInput.SetCursor(100)
 			}
 		case "n":
-			m.textInput.SetValue("")
 			switch m.focusedFrame {
 			case 1:
-				m.inputAction = NewSession
+				m.inputAction = DirPicker
+				m.dirPicker = NewDirPicker(m.theme)
+				cmd = initDirPickerCmd(m.sessions.currentId)
 			case 2:
+				m.textInput.SetValue("")
 				m.inputAction = NewWindow
 			}
 		case "N":
@@ -288,6 +293,40 @@ input_mode:
 			} else {
 				cmd = sendKeyToPaneCmd(m, msg)
 			}
+		}
+		goto basic_handlers
+	}
+
+	if m.inputAction == DirPicker {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case tea.KeyEsc.String(), "ctrl+c":
+				m.inputAction = None
+				goto basic_handlers
+			case tea.KeyUp.String(), "ctrl+p":
+				m.dirPicker.moveCursor(-1)
+				goto basic_handlers
+			case tea.KeyDown.String(), "ctrl+n":
+				m.dirPicker.moveCursor(1)
+				goto basic_handlers
+			case tea.KeyEnter.String():
+				var done bool
+				cmd, done = m.dirPicker.handleEnter(m.sessions.items)
+				if done {
+					m.inputAction = None
+				}
+				goto basic_handlers
+			case tea.KeyTab.String():
+				m.dirPicker.showHidden = !m.dirPicker.showHidden
+				m.dirPicker.clampCursor()
+				goto basic_handlers
+			}
+		}
+		oldFilter := m.dirPicker.filterInput.Value()
+		m.dirPicker.filterInput, cmd = m.dirPicker.filterInput.Update(msg)
+		if m.dirPicker.filterInput.Value() != oldFilter {
+			m.dirPicker.cursor = 0
 		}
 		goto basic_handlers
 	}
@@ -400,6 +439,14 @@ basic_handlers:
 		cmd = previewCmd(m)
 	case previewMsg:
 		m.preview.contents = string(msg)
+	case dirEntriesMsg:
+		if m.inputAction == DirPicker {
+			m.dirPicker.currentPath = msg.path
+			m.dirPicker.entries = msg.entries
+			m.dirPicker.err = msg.err
+			m.dirPicker.cursor = 0
+			m.dirPicker.filterInput.SetValue("")
+		}
 	case paneClosedMsg:
 		if m.inputAction == LiveInput {
 			m.inputAction = None
@@ -427,6 +474,11 @@ func (m AppModel) View() string {
 	// If showing help, render help overlay
 	if m.showHelp {
 		return m.HelpView()
+	}
+
+	// If directory picker is open, render it as overlay
+	if m.inputAction == DirPicker {
+		return m.dirPicker.View(m.theme, m.terminal.width, m.terminal.height)
 	}
 
 	preview := m.preview
@@ -472,7 +524,7 @@ func (m AppModel) StatusBar() Frame {
 		left = append(left, normalStyle.Render("Delete: d"))
 		left = append(left, normalStyle.Render("Swap: s"))
 		if m.focusedFrame == 1 {
-			left = append(left, normalStyle.Render("New: n"))
+			left = append(left, normalStyle.Render("New (dir): n"))
 			left = append(left, normalStyle.Render("New (nameless): N"))
 			left = append(left, normalStyle.Render("Rename: r"))
 			left = append(left, normalStyle.Render("Refresh: R"))
@@ -810,7 +862,7 @@ func (m AppModel) HelpView() string {
 
 	// Entity management section
 	helpContent += sectionStyle.Render("Entity Management") + "\n"
-	helpContent += keyStyle.Render("  n") + descStyle.Render("Create new (prompts for name)") + "\n"
+	helpContent += keyStyle.Render("  n") + descStyle.Render("New session (pick directory) / window (name prompt)") + "\n"
 	helpContent += keyStyle.Render("  N") + descStyle.Render("Create new (auto-generated name)") + "\n"
 	helpContent += keyStyle.Render("  r") + descStyle.Render("Rename selected item") + "\n"
 	helpContent += keyStyle.Render("  d") + descStyle.Render("Delete selected item") + "\n"
