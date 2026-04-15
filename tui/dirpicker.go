@@ -163,24 +163,36 @@ func sanitizeSessionName(name string) string {
 	return name
 }
 
-// newSessionInDirCmd creates a tmux session in the given directory, or switches
-// to an existing session with the same name.
+// newSessionInDirCmd creates a detached tmux session in the given directory.
+// If a session with the same basename already exists, appends a numeric suffix.
 func newSessionInDirCmd(path string, sessions []TmuxEntity) tea.Cmd {
 	return func() tea.Msg {
 		basename := filepath.Base(path)
 		name := sanitizeSessionName(basename)
 
-		for _, s := range sessions {
-			if s.name == name {
-				exec.Command("tmux", "switch-client", "-t", name).Run()
-				return clearInputTextMsg{}
+		// If name collides, find a unique suffix
+		if sessionExists(name, sessions) {
+			for i := 2; i < 100; i++ {
+				candidate := fmt.Sprintf("%s-%d", name, i)
+				if !sessionExists(candidate, sessions) {
+					name = candidate
+					break
+				}
 			}
 		}
 
 		exec.Command("tmux", "new-session", "-ds", name, "-c", path).Run()
-		exec.Command("tmux", "switch-client", "-t", name).Run()
 		return clearInputTextMsg{}
 	}
+}
+
+func sessionExists(name string, sessions []TmuxEntity) bool {
+	for _, s := range sessions {
+		if s.name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // View renders the directory picker as a centered modal overlay.
