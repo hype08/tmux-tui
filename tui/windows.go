@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -28,13 +29,21 @@ func renameWindowCmd(m AppModel) tea.Cmd {
 
 func newWindowCmd(m AppModel) tea.Cmd {
 	return func() tea.Msg {
+		sessionTarget := fmt.Sprintf("$%d:", m.sessions.currentId)
+
+		// Inherit the session's start directory so new windows open there too
+		pathBytes, _ := exec.Command("tmux", "display-message", "-t",
+			fmt.Sprintf("$%d", m.sessions.currentId), "-p", "#{session_path}").Output()
+		sessionPath := strings.TrimSpace(string(pathBytes))
+
+		args := []string{"new-window", "-t", sessionTarget}
 		if len(m.textInput.Value()) > 0 {
-			c := exec.Command("tmux", "new-window", "-n", m.textInput.Value(), "-t", fmt.Sprintf("$%d:", m.sessions.currentId))
-			c.Run()
-		} else {
-			c := exec.Command("tmux", "new-window", "-t", fmt.Sprintf("$%d:", m.sessions.currentId))
-			c.Run()
+			args = append(args, "-n", m.textInput.Value())
 		}
+		if sessionPath != "" {
+			args = append(args, "-c", sessionPath)
+		}
+		exec.Command("tmux", args...).Run()
 		return clearInputTextMsg{}
 	}
 }
