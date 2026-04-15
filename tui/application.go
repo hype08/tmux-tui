@@ -617,12 +617,12 @@ func (m *AppModel) prevScreenMode() {
 
 func (m *AppModel) toggleTransparent() {
 	m.theme.Transparent = !m.theme.Transparent
-	if !m.theme.Transparent && m.theme.Background == "" {
-		// Turning transparency OFF: set a default black background
-		m.theme.Background = lipgloss.Color("0")
-	} else if m.theme.Transparent {
-		// Turning transparency ON: clear the background color
+	if m.theme.Transparent {
+		// Transparency ON: clear the background to use terminal default
 		m.theme.Background = lipgloss.Color("")
+	} else {
+		// Transparency OFF: set a default black background
+		m.theme.Background = lipgloss.Color("0")
 	}
 }
 

@@ -24,10 +24,11 @@ func DefaultTheme() Theme {
 	}
 }
 
-// NewStyle creates a lipgloss style with theme colors, only setting them if not empty
+// NewStyle creates a lipgloss style with theme colors
 func (t Theme) NewStyle() lipgloss.Style {
 	style := lipgloss.NewStyle()
-	if !t.Transparent && t.Background != "" {
+	if !t.Transparent {
+		// Only apply background when transparency is disabled
 		style = style.Background(t.Background)
 	}
 	if t.Foreground != "" {
