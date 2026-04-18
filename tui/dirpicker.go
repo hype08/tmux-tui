@@ -252,7 +252,11 @@ func (dp DirPickerModel) View(theme Theme, termWidth, termHeight int) string {
 			Width(modalWidth - 4).
 			Height(modalHeight - 4)
 
-		return lipgloss.Place(termWidth, termHeight, lipgloss.Center, lipgloss.Center, boxStyle.Render(content))
+		errPlaceOpts := []lipgloss.WhitespaceOption{}
+		if !theme.Transparent {
+			errPlaceOpts = append(errPlaceOpts, lipgloss.WithWhitespaceBackground(theme.Background))
+		}
+		return lipgloss.Place(termWidth, termHeight, lipgloss.Center, lipgloss.Center, boxStyle.Render(content), errPlaceOpts...)
 	}
 
 	// Entry list with scroll
@@ -313,5 +317,9 @@ func (dp DirPickerModel) View(theme Theme, termWidth, termHeight int) string {
 		boxStyle = boxStyle.Height(maxContentHeight)
 	}
 
-	return lipgloss.Place(termWidth, termHeight, lipgloss.Center, lipgloss.Center, boxStyle.Render(content))
+	placeOpts := []lipgloss.WhitespaceOption{}
+	if !theme.Transparent {
+		placeOpts = append(placeOpts, lipgloss.WithWhitespaceBackground(theme.Background))
+	}
+	return lipgloss.Place(termWidth, termHeight, lipgloss.Center, lipgloss.Center, boxStyle.Render(content), placeOpts...)
 }

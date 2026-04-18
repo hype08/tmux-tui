@@ -618,11 +618,10 @@ func (m *AppModel) prevScreenMode() {
 func (m *AppModel) toggleTransparent() {
 	m.theme.Transparent = !m.theme.Transparent
 	if m.theme.Transparent {
-		// Transparency ON: clear the background to use terminal default
-		m.theme.Background = lipgloss.Color("")
+		m.theme.Background = lipgloss.NoColor{}
 	} else {
-		// Transparency OFF: set a default black background
-		m.theme.Background = lipgloss.Color("0")
+		// Palette-independent true black for opaque mode
+		m.theme.Background = lipgloss.Color("#000000")
 	}
 }
 
@@ -924,11 +923,17 @@ func (m AppModel) HelpView() string {
 
 	helpBox := boxStyle.Render(helpContent)
 
+	placeOpts := []lipgloss.WhitespaceOption{}
+	if !m.theme.Transparent {
+		placeOpts = append(placeOpts, lipgloss.WithWhitespaceBackground(m.theme.Background))
+	}
+
 	return lipgloss.Place(
 		m.terminal.width,
 		m.terminal.height,
 		lipgloss.Center,
 		lipgloss.Center,
 		helpBox,
+		placeOpts...,
 	)
 }
