@@ -78,24 +78,33 @@ func refreshSessionCmd(m AppModel) tea.Cmd {
 
 		isSelf := getSelfSessionId() == sessionTarget
 
-		// Create replacement session with a temp name to avoid collision.
-		// The after-new-session hook fires here, rebuilding default windows.
+		// Clean up stale temp session from a previous failed refresh
 		tempName := sessionName + "-refreshing"
-		args := []string{"new-session", "-d", "-s", tempName}
+		exec.Command("tmux", "kill-session", "-t", "=" + tempName).Run()
+
+		// Create replacement session with a temp name to avoid collision.
+		// Use -P -F to capture the new session's ID for unambiguous targeting.
+		// The after-new-session hook fires here, rebuilding default windows.
+		args := []string{"new-session", "-d", "-s", tempName, "-P", "-F", "#{session_id}"}
 		if sessionPath != "" {
 			args = append(args, "-c", sessionPath)
 		}
-		exec.Command("tmux", args...).Run()
+		newIdBytes, err := exec.Command("tmux", args...).Output()
+		if err != nil {
+			return tickMsg{}
+		}
+		newSessionId := strings.TrimSpace(string(newIdBytes))
 
 		if isSelf {
-			exec.Command("tmux", "switch-client", "-t", tempName).Run()
+			exec.Command("tmux", "switch-client", "-t", newSessionId).Run()
 		}
 
-		exec.Command("tmux", "kill-session", "-t", sessionName).Run()
-		exec.Command("tmux", "rename-session", "-t", tempName, sessionName).Run()
+		// Kill original session by ID to avoid name prefix-matching ambiguity
+		exec.Command("tmux", "kill-session", "-t", sessionTarget).Run()
+		exec.Command("tmux", "rename-session", "-t", newSessionId, sessionName).Run()
 
 		if isSelf {
-			exec.Command("tmux", "switch-client", "-t", sessionName).Run()
+			exec.Command("tmux", "switch-client", "-t", newSessionId).Run()
 		}
 
 		return tickMsg{}
