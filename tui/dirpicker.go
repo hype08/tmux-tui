@@ -181,24 +181,10 @@ func newSessionInDirCmd(path string, sessions []TmuxEntity) tea.Cmd {
 			}
 		}
 
-		out, _ := exec.Command("tmux", "new-session", "-dPs", name, "-c", path, "-F", "#{pane_id}").Output()
-		if initialPane := strings.TrimSpace(string(out)); initialPane != "" {
-			cmdOut, _ := exec.Command("tmux", "display-message", "-t", initialPane, "-p", "#{pane_current_command}").Output()
-			if isShellProcess(strings.TrimSpace(string(cmdOut))) {
-				exec.Command("tmux", "send-keys", "-t", initialPane, fmt.Sprintf("cd %q && clear", path), "Enter").Run()
-			}
-		}
+		exec.Command("tmux", "new-session", "-ds", name, "-c", path).Run()
 
 		return clearInputTextMsg{}
 	}
-}
-
-func isShellProcess(cmd string) bool {
-	switch cmd {
-	case "zsh", "bash", "sh", "fish", "dash", "ksh", "tcsh":
-		return true
-	}
-	return false
 }
 
 func sessionExists(name string, sessions []TmuxEntity) bool {
